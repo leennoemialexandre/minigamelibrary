@@ -110,10 +110,14 @@ async function generateWordBank(category) {
       return [];
     }
 
-    // Return clean words, filter any phrases with punctuation or weird chars
     return data
       .map(item => item.word)
-      .filter(word => /^[a-zA-Z\s]+$/.test(word)); // basic sanitation
+      .filter(word =>
+        /^[a-zA-Z\s]+$/.test(word) &&          // only letters/spaces
+        word.length >= 3 &&                    // no short junk
+        !/\d/.test(word) &&                    // no numbers
+        !word.toLowerCase().includes(category.toLowerCase()) // no "movies-88"
+      );
   } catch (error) {
     alert('Something went wrong fetching words. Please try again.');
     console.error(error);
