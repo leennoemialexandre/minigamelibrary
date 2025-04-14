@@ -1,14 +1,13 @@
 # minigamelibrary
 
-mini-game-library/
-├── index.html                        <-- Homepage with game list
-├── style.css                         <-- Global styling for site
+minigamelibrary/
+├── index.html
+├── style.css
 ├── games/
 │   └── concentration-64/
-│       ├── index.html                <-- Game UI
-│       ├── script.js                 <-- Game logic
-│       └── styles.css                <-- Game styling
-└── assets/                           <-- (optional icons/images)
+│       ├── index.html     ✅ game’s main page
+│       ├── script.js      ✅ game logic
+│       └── styles.css     ✅ game styling
 
 
 <!-- minigamelibrary/index.html -->
