@@ -29,11 +29,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const restartBtn = document.getElementById('restart');
 
   // ===== Events =====
-  randomCategoryBtn.onclick = () => {
-    const mockCategories = ['furniture', 'countries', 'insects'];
-    const randomKey = mockCategories[Math.floor(Math.random() * mockCategories.length)];
-    categoryInput.value = randomKey;
-  };
+randomCategoryBtn.onclick = () => {
+  const funRandoms = ['space', 'music', 'oceans', 'fashion', 'robots', 'mythology', 'sports', 'disney'];
+  const randomKey = funRandoms[Math.floor(Math.random() * funRandoms.length)];
+  categoryInput.value = randomKey;
+};
 
   startGameBtn.onclick = async () => {
     const cat = categoryInput.value.toLowerCase().trim();
@@ -99,20 +99,28 @@ document.addEventListener("DOMContentLoaded", () => {
     wordListUI.innerHTML = '';
   }
 
-  async function generateWordBank(category) {
-    const mockBanks = {
-      furniture: ['chair', 'table', 'sofa', 'desk', 'lamp', 'shelf', 'stool', 'bed', 'drawer', 'cabinet', 'couch', 'bench', 'mirror'],
-      countries: ['brazil', 'india', 'canada', 'egypt', 'japan', 'germany', 'france', 'italy', 'kenya', 'norway'],
-      insects: ['ant', 'bee', 'fly', 'moth', 'wasp', 'beetle', 'mosquito', 'dragonfly', 'termite']
-    };
+async function generateWordBank(category) {
+  const endpoint = `https://api.datamuse.com/words?ml=${encodeURIComponent(category)}&max=100`;
+  try {
+    const response = await fetch(endpoint);
+    const data = await response.json();
 
-    if (mockBanks[category]) {
-      return [...mockBanks[category]];
+    if (!data || data.length === 0) {
+      alert(`No words found for "${category}". Try a simpler term.`);
+      return [];
     }
 
-    return Array.from({ length: 100 }, (_, i) => `${category}-${i + 1}`);
-
+    // Return clean words, filter any phrases with punctuation or weird chars
+    return data
+      .map(item => item.word)
+      .filter(word => /^[a-zA-Z\s]+$/.test(word)); // basic sanitation
+  } catch (error) {
+    alert('Something went wrong fetching words. Please try again.');
+    console.error(error);
+    return [];
   }
+}
+
 
   function showTurn() {
     turnDisplay.textContent = gameState.turn === 'player' ? "Player's Turn" : "Computer's Turn";
