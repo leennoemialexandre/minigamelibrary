@@ -101,26 +101,35 @@ randomCategoryBtn.onclick = () => {
 
 async function generateWordBank(category) {
   const endpoint = `https://api.datamuse.com/words?ml=${encodeURIComponent(category)}&max=100`;
+
   try {
     const response = await fetch(endpoint);
     const data = await response.json();
 
     if (!data || data.length === 0) {
-      alert(`No words found for "${category}". Try a simpler term.`);
+      alert(`No words found for "${category}". Try a different one.`);
       return [];
     }
 
-    return data
-      .map(item => item.word)
+    // Clean words: remove items with digits, hyphens, and duplicates
+    const cleanWords = data
+      .map(item => item.word.trim())
       .filter(word =>
-        /^[a-zA-Z\s]+$/.test(word) &&          // only letters/spaces
-        word.length >= 3 &&                    // no short junk
-        !/\d/.test(word) &&                    // no numbers
-        !word.toLowerCase().includes(category.toLowerCase()) // no "movies-88"
+        /^[a-zA-Z\s]+$/.test(word) &&                 // only letters/spaces
+        word.length >= 3 &&                           // reasonable length
+        !word.toLowerCase().includes(category.toLowerCase()) // no "movies" in "movies-88"
       );
+
+    const uniqueWords = [...new Set(cleanWords)];
+
+    if (uniqueWords.length === 0) {
+      alert(`No valid words found for "${category}".`);
+    }
+
+    return uniqueWords;
   } catch (error) {
-    alert('Something went wrong fetching words. Please try again.');
-    console.error(error);
+    console.error('Fetch error:', error);
+    alert('Could not load words. Check your internet or try another category.');
     return [];
   }
 }
