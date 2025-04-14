@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     return Array.from({ length: 100 }, (_, i) => `${category}-${i + 1}`);
+
   }
 
   function showTurn() {
