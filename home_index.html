@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Game Library</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #222;
+    --accent: #e8ff47;
+    --text: #f0f0f0;
+    --muted: #555;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    animation: fadeUp 0.4s ease;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(36px, 10vw, 80px);
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    text-shadow: 0 0 60px rgba(232,255,71,0.2);
+  }
+
+  .logo span {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.18em;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .game-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .game-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .game-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    z-index: 0;
+  }
+
+  .game-card:hover::before { transform: translateX(0); }
+  .game-card:hover { color: #000; border-color: var(--accent); }
+  .game-card:hover .game-desc { color: #000; }
+  .game-card > * { position: relative; z-index: 1; }
+
+  .game-info { display: flex; flex-direction: column; gap: 4px; }
+
+  .game-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.06em;
+  }
+
+  .game-desc {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .game-arrow {
+    font-size: 20px;
+    opacity: 0.4;
+  }
+
+  .coming-soon {
+    border: 1px dashed var(--border);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0.35;
+  }
+
+  .coming-soon .game-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .badge {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    padding: 3px 8px;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    Mini Game Library
+    <span>pick a game and play</span>
+  </div>
+
+  <div>
+    <div class="section-label">Available Now</div>
+    <div class="game-list">
+      <a class="game-card" href="games/concentration-64/index.html">
+        <div class="game-info">
+          <div class="game-name">🧠 Concentration</div>
+          <div class="game-desc">Name animals, countries, or names before time runs out</div>
+        </div>
+        <div class="game-arrow">→</div>
+      </a>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">Coming Soon</div>
+    <div class="game-list">
+      <div class="coming-soon">
+        <div class="game-name">??? </div>
+        <div class="badge">Soon</div>
+      </div>
+      <div class="coming-soon">
+        <div class="game-name">???</div>
+        <div class="badge">Soon</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
