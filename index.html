@@ -1,23 +1,835 @@
-index.html 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Mini Game Library</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CONCENTRATION</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #222;
+    --accent: #e8ff47;
+    --accent2: #ff4747;
+    --accent3: #47d4ff;
+    --text: #f0f0f0;
+    --muted: #555;
+    --green: #47ff8a;
+    --timer-full: #e8ff47;
+    --timer-low: #ff4747;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* SCREENS */
+  .screen { display: none; width: 100%; max-width: 680px; padding: 24px; }
+  .screen.active { display: flex; flex-direction: column; align-items: center; }
+
+  /* ── MENU SCREEN ── */
+  #menu-screen {
+    gap: 40px;
+    animation: fadeUp 0.4s ease;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(28px, 8vw, 72px);
+    letter-spacing: 0.06em;
+    line-height: 1;
+    color: var(--accent);
+    text-align: center;
+    text-shadow: 0 0 60px rgba(232,255,71,0.25);
+    white-space: nowrap;
+  }
+
+  .logo span {
+    display: block;
+    font-size: 0.22em;
+    letter-spacing: 0.35em;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  .categories {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .cat-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 18px 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cat-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    z-index: 0;
+  }
+
+  .cat-btn:hover::before { transform: translateX(0); }
+  .cat-btn:hover { color: #000; border-color: var(--accent); }
+  .cat-btn:hover .cat-count { color: #000; }
+
+  .cat-btn > * { position: relative; z-index: 1; }
+
+  .cat-label { font-size: 18px; letter-spacing: 0.06em; }
+  .cat-count { color: var(--muted); font-size: 12px; }
+
+  .cat-emoji { font-size: 22px; }
+
+  /* ── GAME SCREEN ── */
+  #game-screen { gap: 20px; animation: fadeUp 0.35s ease; }
+
+  .game-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+
+  .category-tag {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+
+  .scores {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .score-item {
+    text-align: center;
+  }
+
+  .score-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .score-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    line-height: 1;
+  }
+
+  .score-val.player { color: var(--accent); }
+  .score-val.computer { color: var(--accent3); }
+
+  .score-divider {
+    color: var(--muted);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+  }
+
+  /* TIMER */
+  .timer-wrap {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .timer-bar {
+    height: 100%;
+    width: 100%;
+    background: var(--timer-full);
+    transform-origin: left;
+    transition: background 0.3s;
+  }
+
+  .timer-bar.low { background: var(--timer-low); }
+
+  .timer-countdown {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    color: var(--accent);
+    text-align: center;
+    line-height: 1;
+    transition: color 0.3s;
+  }
+
+  .timer-countdown.low { color: var(--timer-low); }
+
+  /* GAME LOG */
+  .game-log {
+    width: 100%;
+    min-height: 80px;
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-y: auto;
+    max-height: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .log-entry { opacity: 0; animation: fadeIn 0.2s ease forwards; }
+  .log-entry.good { color: var(--green); }
+  .log-entry.bad { color: var(--accent2); }
+  .log-entry.info { color: var(--accent3); }
+  .log-entry.system { color: var(--muted); }
+
+  /* INPUT */
+  .input-wrap {
+    width: 100%;
+    position: relative;
+    display: flex;
+    gap: 0;
+  }
+
+  #answer-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-right: none;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    padding: 16px 20px;
+    outline: none;
+    transition: border-color 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  #answer-input:focus { border-color: var(--accent); }
+  #answer-input:disabled { opacity: 0.4; cursor: not-allowed; }
+  #answer-input::placeholder { color: var(--muted); font-size: 13px; }
+
+  #submit-btn {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    padding: 16px 28px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  #submit-btn:hover { background: #fff; border-color: #fff; }
+  #submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .used-count {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: right;
+    width: 100%;
+  }
+
+  /* COMPUTER THINKING */
+  .thinking {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    color: var(--accent3);
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .thinking.visible { display: flex; }
+
+  .thinking-dots span {
+    animation: blink 1s infinite;
+    font-size: 18px;
+    line-height: 0;
+  }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* GAME OVER */
+  #gameover-screen { gap: 32px; animation: fadeUp 0.4s ease; }
+
+  .result-header {
+    text-align: center;
+  }
+
+  .result-label {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .result-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 12vw, 96px);
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+  }
+
+  .result-title.win { color: var(--green); }
+  .result-title.lose { color: var(--accent2); }
+  .result-title.tie { color: var(--accent); }
+
+  .final-scores {
+    display: flex;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .final-score-block {
+    flex: 1;
+    padding: 20px;
+    background: var(--surface);
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+
+  .final-score-block .label {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .final-score-block .val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px;
+    line-height: 1;
+  }
+
+  .final-score-block.p .val { color: var(--accent); }
+  .final-score-block.c .val { color: var(--accent3); }
+
+  .result-reason {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.03em;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .action-btn {
+    flex: 1;
+    padding: 16px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid;
+  }
+
+  .action-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+
+  .action-btn.primary:hover { background: #fff; border-color: #fff; }
+
+  .action-btn.secondary {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--muted);
+  }
+
+  .action-btn.secondary:hover { border-color: var(--text); color: var(--text); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-4px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  .shake { animation: shake 0.3s ease; }
+
+  /* BACK BTN */
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 0;
+    align-self: flex-start;
+    transition: color 0.15s;
+  }
+
+  .back-btn:hover { color: var(--text); }
+
+  .back-btn::before { content: '← '; }
+
+</style>
 </head>
 <body>
-  <h1>🎮 Mini Game Library</h1>
-  <p>cute fun mini games to play when you're bored</p>
 
-  <ul>
-    <li><a href="games/concentration-64/index.html">Play Concentration 64</a></li>
-    <li><a href="games/coming-soon.html">More games coming soon!</a></li>
-  </ul>
+<!-- ── MENU ── -->
+<section id="menu-screen" class="screen active">
+  <div class="logo">
+    CONCENTRATION
+    <span>name it before time runs out</span>
+  </div>
+  <div class="categories">
+    <button class="cat-btn" onclick="startGame('animals')">
+      <span class="cat-emoji">🦁</span>
+      <span class="cat-label">Animals</span>
+      <span class="cat-count">300 entries</span>
+    </button>
+    <button class="cat-btn" onclick="startGame('countries')">
+      <span class="cat-emoji">🌍</span>
+      <span class="cat-label">Countries</span>
+      <span class="cat-count">194 entries</span>
+    </button>
+    <button class="cat-btn" onclick="startGame('names')">
+      <span class="cat-emoji">👤</span>
+      <span class="cat-label">Names</span>
+      <span class="cat-count">600 entries</span>
+    </button>
+  </div>
+</section>
+
+<!-- ── GAME ── -->
+<section id="game-screen" class="screen">
+  <button class="back-btn" onclick="goMenu()">Menu</button>
+
+  <div class="game-header">
+    <div class="category-tag" id="cat-tag">Animals</div>
+    <div class="scores">
+      <div class="score-item">
+        <div class="score-label">You</div>
+        <div class="score-val player" id="p-score">0</div>
+      </div>
+      <div class="score-divider">—</div>
+      <div class="score-item">
+        <div class="score-label">CPU</div>
+        <div class="score-val computer" id="c-score">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="timer-wrap">
+    <div class="timer-bar" id="timer-bar"></div>
+  </div>
+
+  <div class="timer-countdown" id="timer-display">5</div>
+
+  <div class="game-log" id="game-log"></div>
+
+  <div class="thinking" id="thinking-indicator">
+    <span>CPU thinking</span>
+    <span class="thinking-dots">
+      <span>·</span><span>·</span><span>·</span>
+    </span>
+  </div>
+
+  <div class="input-wrap">
+    <input
+      id="answer-input"
+      type="text"
+      placeholder="Type your answer and press Enter..."
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    >
+    <button id="submit-btn" onclick="submitAnswer()">GO</button>
+  </div>
+
+  <div class="used-count" id="used-count">0 used</div>
+</section>
+
+<!-- ── GAME OVER ── -->
+<section id="gameover-screen" class="screen">
+  <div class="result-header">
+    <div class="result-label" id="result-label">Game Over</div>
+    <div class="result-title" id="result-title">YOU WIN</div>
+  </div>
+
+  <div class="final-scores">
+    <div class="final-score-block p">
+      <div class="label">You</div>
+      <div class="val" id="final-p">0</div>
+    </div>
+    <div class="final-score-block c">
+      <div class="label">CPU</div>
+      <div class="val" id="final-c">0</div>
+    </div>
+  </div>
+
+  <div class="result-reason" id="result-reason"></div>
+
+  <div class="btn-row">
+    <button class="action-btn primary" id="play-again-btn" onclick="playAgain()">Play Again</button>
+    <button class="action-btn secondary" onclick="goMenu()">Change Category</button>
+  </div>
+</section>
+
+<script>
+// ── DATA ──
+const DATA = {
+  animals: ["Aardvark","Aardwolf","Abyssinian","Abyssinian Guinea Pig","Acadian Flycatcher","Ackie Monitor","Addax","Admiral Butterfly","Affenpinscher","Afghan Hound","African Bullfrog","African Bush Elephant","African Civet","African Clawed Frog","African Elephant","African Fish Eagle","African Forest Elephant","African Golden Cat","African Grey Parrot","African Wild Dog","Agouti","Airedale Terrier","Akita","Albatross","Alligator Gar","Alpaca","Amazon Parrot","Amberjack","American Alligator","American Bulldog","American Cocker Spaniel","American Cockroach","American Eel","American Eskimo Dog","American Foxhound","American Paddlefish","American Pit Bull Terrier","American Robin","American Toad","American Water Spaniel","Amur Leopard","Anaconda","Anatolian Shepherd Dog","Anchovies","Angelfish","Anglerfish","Angora Goat","Ant","Anteater","Antelope","Ape","Appenzeller Dog","Arabian Cobra","Arabian Wolf","Arapaima","Archaeopteryx","Arctic Fox","Arctic Hare","Arctic Wolf","Argentinosaurus","Arizona Bark Scorpion","Armadillo","Armadillo Lizard","Asian Arowana","Asian Carp","Asian Elephant","Asian Giant Hornet","Asian Lady Beetle","Asian Vine Snake","Asian Water Monitor","Asiatic Black Bear","Asp","Assassin Bug","Atlantic Cod","Atlantic Salmon","Atlantic Sturgeon","Atlas Beetle","Atlas Moth","Australian Cattle Dog","Australian Gecko","Australian Kelpie Dog","Australian Shepherd","Australian Terrier","Axolotl","Aye-aye","Azawakh","Babirusa","Baboon","Bactrian Camel","Badger","Bald Eagle","Baleen Whale","Ball Python","Bamboo Rat","Bamboo Shark","Bandicoot","Barb","Barracuda","Barn Owl","Barn Swallow","Barnacle","Basking Shark","Bass","Basset Hound","Bat","Bat-Eared Fox","Beagle","Bear","Bearded Collie","Bearded Dragon","Bearded Vulture","Beaver","Bee","Beefalo","Beetle","Belgian Malinois","Belgian Sheepdog","Belgian Shepherd","Bengal Tiger","Bernese Mountain Dog","Betta Fish","Bighorn Sheep","Bison","Black Mamba","Black Marlin","Black Rhinoceros","Black Widow Spider","Blacktip Shark","Blobfish","Bloodhound","Blue Jay","Blue Shark","Blue Whale","Blue-Ringed Octopus","Bluefin Tuna","Bluefish","Bluegill","Bobcat","Bonobo","Border Collie","Border Terrier","Boston Terrier","Bottlenose Dolphin","Box Jellyfish","Box Turtle","Boxer Dog","Brook Trout","Brown Bear","Brown Hyena","Buffalo","Bull Shark","Bull Terrier","Bulldog","Bullfrog","Bullmastiff","Bumblebee","Burmese Python","Bush Baby","Butterfly","Caiman","Cairn Terrier","California Condor","California Kingsnake","Camel","Camel Spider","Cane Corso","Capybara","Cardinal","Caribou","Catfish","Chameleon","Cheetah","Chimpanzee","Chinchilla","Chipmunk","Clouded Leopard","Cobra","Cockatoo","Coelacanth","Collie","Coyote","Crab","Crane","Crocodile","Crow","Dachshund","Dalmatian","Deer","Dingo","Doberman Pinscher","Dolphin","Donkey","Dragonfly","Duck","Eagle","Earthworm","Echidna","Eel","Elephant","Elk","Emperor Penguin","Emu","Falcon","Fennec Fox","Ferret","Firefly","Flamingo","Fox","Frog","Gazelle","Gecko","Gerbil","Giant Panda","Giant Squid","Giraffe","Goat","Golden Eagle","Golden Retriever","Goldfish","Goose","Gorilla","Great Dane","Great White Shark","Grizzly Bear","Groundhog","Guinea Pig","Hammerhead Shark","Hamster","Hedgehog","Hippopotamus","Honey Badger","Hornet","Horse","Hummingbird","Hyena","Iguana","Impala","Jaguar","Jellyfish","Kangaroo","King Cobra","Kingfisher","Kiwi","Koala","Komodo Dragon","Labrador Retriever","Ladybug","Leafcutter Ant","Lemur","Leopard","Lion","Llama","Lobster","Lynx","Macaw","Manatee","Manta Ray","Moose","Moth","Mountain Lion","Mouse","Narwhal","Ocelot","Octopus","Opossum","Orangutan","Orca","Ostrich","Otter","Owl","Panda","Panther","Parrot","Peacock","Pelican","Penguin","Piranha","Platypus","Polar Bear","Porcupine","Praying Mantis","Puffin","Python","Rabbit","Raccoon","Rat","Rattlesnake","Red Fox","Red Panda","Rhinoceros","Roadrunner","Robin","Rooster","Salamander","Scorpion","Seahorse","Seal","Shark","Skunk","Sloth","Snapping Turtle","Snow Leopard","Sparrow","Spider","Squid","Stingray","Swan","Tiger","Toucan","Turkey","Turtle","Vulture","Walrus","Warthog","Weasel","Wolf","Wolverine","Wombat","Woodpecker","Yak","Zebra"],
+
+  countries: ["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina","Burundi","Cambodia","Cameroon","Canada","Cape Verde","Central African Rep","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","East Timor","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Macedonia","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","Norway","Oman","Pakistan","Palau","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Samoa","San Marino","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Swaziland","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"],
+
+  names: ["Roko","Britten","Aleccia","Thain","Giovoni","Erza","Eben","Chasaty","Brailyn","Shandie","Molene","Oriel","Alila","Drucilla","Ellawyn","Phenix","Alessandra","Nasiah","Derian","Rylind","Khalea","Dwana","Lamona","Graceelizabeth","Abukar","Trevione","Yousef","Sieanna","Khylin","Coleigh","Dorin","Tyaisha","Braely","Bentlea","Biaca","Jaymiya","Pita","Gabriel","Yuna","Anaiah","Lavarius","Michalena","Carliss","Justan","Aveana","Myesha","Heleana","Reniqua","Nobia","Ascher","Andersson","Sareli","Elanur","Valine","Avienne","Ellen","Boone","Kaaren","Gottfried","Larren","Johan","Crissi","Joriah","Jerris","Dixee","Shabana","Garrison","Skylor","Rushelle","Ashrit","Rilyn","Dalyla","Meryl","Eryk","Cruse","Leahna","Gennevieve","Romanita","Shelon","Najaah","Durant","Shavonta","Jakera","Tysheed","Veldon","Antonne","Elemer","Zuma","Alline","Yorman","Kaylamarie","Gaye","Dollye","Nehemiah","Jabriya","Donella","Salina","Rosalynne","Lauriano","Cherokee","Chasidy","Tianda","Freddy","Ofelia","Kiria","Kauai","Dulcie","Charlon","Marialy","Maddon","Beira","Andrzej","Brijet","Remelda","Corrie","Wray","Sharalyn","Khristopher","Parlie","Arlan","Kairy","Kaede","Leonel","Mekail","Adley","Takecia","Brysen","Sharlette","Mickaila","Garrell","Rondell","Javarron","Brittnay","Corbynn","Abaigael","Taler","Friday","Tryton","Darly","Mareena","Hooriya","Rogen","Maree","Dericka","Jowharah","Tuleen","Mila","Vernicia","Aaiza","Payton","Lydianne","Aja","Briyah","Emmilyn","Neil","Avayiah","Azrah","Tavonda","Luisafernanda","Asaf","Meribah","Tymber","Carmine","Cassandria","Cyndi","Gagandeep","Meda","Kiandria","Dominyck","Trameka","Tashia","Sheridan","Desman","Suniyah","Ivena","Shaheedah","Rylin","Jovanny","Marva","Camella","Ettie","Edmont","Arlevia","Myron","Omran","Duvid","Stasha","Rheeta","Arantxa","Artemisia","Jamye","Ashlea","Marlii","Emilianna","Gracielynn","Ludmilla","Dontreal","Celinda","Tamariana","Niasha","Lichelle","Eriel","Liesha","Yurith","Keiry","Bernis","Biatriz","Sanela","Kendyll","Lenley","Tarrin","Shakina","Rozlynn","Aren","Kaysyn","Taray","Brier","Deleena","Dejona","Chatrice","Dawan","Gracy","Evangelyne","Audia","Birdie","Anivia","Millerd","Berenger","Torrie","Keilani","Lorilea","Arainna","Cyarah","Justyn","Aarna","Kamylla","Vritika","Walden","Kialyn","Tateana","Sartaj","Tahirah","Coby","Dejahnae","Miranda","Timothie","Anyja","Animesh","Melodi","Marely","Paityn","Arul","Elva","Callison","Nevada","Noretta","Amely","Ranold","Samita","Mavryck","Jacorey","Fonda","Seville","Emmalea","Roy","Humayra","Tondalaya","Lauralee","Bobbisue","Donna","Maraia","Jem","Eron","Jordaan","Haisleigh","Corabell","Kushtrim","Mishawn","Solina","Quneisha","Yumna","Saige","Meilyn","Adalinn","Seniyah","Naba","Savonna","Chakong","Gabrialle","Burdell","Brenon","Colee","Gerrold","Gurjit","Taeghan","Jayla","Devonn","Shelbi","Rihab","Manu","Lydell","Evilyn","Anjaly","Benjamine","Analis","Abbigayle","Caylyn","Robertha","Francisca","Thackery","Kyrha","Myann","Kinyada","Adelaya","Briyan","Auddie","Chylie","Momina","Jonthomas","Nyrell","Mykera","Christpoher","Kiyana","Amonti","Irys","Joesph","Yahari","Ameriah","Dmar","Sharn","Evalou","Selisa","Branch","Jerit","Victorian","Naquitta","Keilan","Rashine","Titiana","Zaion","Darcey","Kennise","Ale","Temitope","Janessa","Virlie","Yeriel","Seydi","Tehila","Zaine","Garred","Corinthian","Wencel","Breylynn","Kahiem","Amberlea","Levetta","Derrick","Zella","Lavor","Jenara","Imojene","Elaine","Alazaya","Santos","Delrose","Katija","Jameer","Gradie","Vallyn","Granville","Jennessy","Ronise","Kaven","Michalea","Janascia","Fostine","Darling","Nupur","Galen","Amaryia","Parrish","Jazlyne","Tarijah","Wassim","Kristophor","Prianna","Burke","Kaitlinn","Nixaliz","Dejaun","Fareed","Stepahanie","Kristil","Aaradhya","Masir","Yujin","Mikeala","Sheera","Taime","Janessa","Kairo","Delphine","Soren","Lisette","Brixton","Camille","Evander","Isolde","Jasper","Kieran","Leila","Magnus","Niamh","Orion","Paloma","Quinn","Rowan","Sasha","Thea","Ulric","Vesper","Waverly","Xander","Yael","Zara","Adele","Bastian","Cecily","Dorian","Elara","Fabian","Gemma","Hugo","Iris","Julian","Kira","Leo","Mabel","Nico","Ophelia","Percy","Remy","Stella","Talia","Uma","Vivian","Wren","Xavier","Yasmin","Zoe","Aiden","Blair","Caden","Delia","Eden","Finn","Grace","Hayden","Ivy","Jack","Kai","Luna","Mia","Noah","Olive","Parker","River","Sky","Tatum","Violet","Willow","Axel","Blythe","Cleo","Drew","Eva","Felix","Hazel","Jade","Knox","Lena","Milo","Nora","Owen","Piper","Reid","Sage","Troy","Uma","Vera","Wade","Xena","Yara","Zane"]
+};
+
+// Aliases for countries
+const ALIASES = {
+  "usa": "united states", "us": "united states", "america": "united states",
+  "uk": "united kingdom", "britain": "united kingdom", "england": "united kingdom", "great britain": "united kingdom",
+  "uae": "united arab emirates",
+  "russia": "russia", "russian federation": "russia",
+  "north korea": "korea north", "south korea": "korea south",
+  "burma": "myanmar", "iran": "iran", "persia": "iran",
+  "trinidad": "trinidad and tobago"
+};
+
+const TIME_LIMIT = 5;
+const CPU_DELAY = 2500;
+
+// ── STATE ──
+let state = {
+  category: null,
+  validMap: {},   // lowercase -> display
+  usedSet: new Set(),
+  playerScore: 0,
+  cpuScore: 0,
+  timerInterval: null,
+  timerStart: null,
+  inputEnabled: false,
+  gameOver: false,
+  timeExpired: false,
+};
+
+// ── NAVIGATION ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goMenu() {
+  clearTimer();
+  showScreen('menu-screen');
+}
+
+// ── GAME START ──
+function startGame(category) {
+  const items = DATA[category];
+  state = {
+    category,
+    validMap: {},
+    usedSet: new Set(),
+    playerScore: 0,
+    cpuScore: 0,
+    timerInterval: null,
+    timerStart: null,
+    inputEnabled: false,
+    gameOver: false,
+    timeExpired: false,
+  };
+
+  // Build valid map (lowercase -> display)
+  items.forEach(item => {
+    state.validMap[item.toLowerCase()] = item;
+  });
+
+  // UI
+  document.getElementById('cat-tag').textContent =
+    category === 'animals' ? '🦁 Animals' :
+    category === 'countries' ? '🌍 Countries' : '👤 Names';
+  document.getElementById('p-score').textContent = '0';
+  document.getElementById('c-score').textContent = '0';
+  document.getElementById('used-count').textContent = '0 used';
+  document.getElementById('game-log').innerHTML = '';
+  document.getElementById('thinking-indicator').classList.remove('visible');
+  document.getElementById('answer-input').value = '';
+
+  showScreen('game-screen');
+  addLog(`Start naming ${category}! You have ${TIME_LIMIT}s per turn.`, 'system');
+  enableInput();
+  startTimer();
+}
+
+// ── TIMER ──
+function startTimer() {
+  clearTimer();
+  state.timerStart = Date.now();
+
+  const bar = document.getElementById('timer-bar');
+  const display = document.getElementById('timer-display');
+  bar.style.transition = 'none';
+  bar.style.transform = 'scaleX(1)';
+  bar.classList.remove('low');
+  display.classList.remove('low');
+
+  state.timerInterval = setInterval(() => {
+    const elapsed = (Date.now() - state.timerStart) / 1000;
+    const remaining = Math.max(0, TIME_LIMIT - elapsed);
+    const pct = remaining / TIME_LIMIT;
+
+    bar.style.transform = `scaleX(${pct})`;
+    display.textContent = Math.ceil(remaining);
+
+    if (pct < 0.35) {
+      bar.classList.add('low');
+      display.classList.add('low');
+    }
+
+    if (remaining <= 0) {
+      clearTimer();
+      if (!state.gameOver && state.inputEnabled) {
+        triggerTimeOut();
+      }
+    }
+  }, 50);
+}
+
+function clearTimer() {
+  if (state.timerInterval) {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+}
+
+function triggerTimeOut() {
+  state.timeExpired = true;
+  disableInput();
+  addLog('⏱ TIME\'S UP!', 'bad');
+  endGame('timeout');
+}
+
+// ── INPUT ──
+function enableInput() {
+  state.inputEnabled = true;
+  const inp = document.getElementById('answer-input');
+  const btn = document.getElementById('submit-btn');
+  inp.disabled = false;
+  btn.disabled = false;
+  inp.focus();
+}
+
+function disableInput() {
+  state.inputEnabled = false;
+  document.getElementById('answer-input').disabled = true;
+  document.getElementById('submit-btn').disabled = true;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('answer-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitAnswer();
+  });
+});
+
+// ── SUBMIT ──
+function submitAnswer() {
+  if (!state.inputEnabled || state.gameOver) return;
+
+  const inp = document.getElementById('answer-input');
+  const raw = inp.value.trim();
+  if (!raw) return;
+
+  inp.value = '';
+
+  // Normalize
+  let processed = raw.toLowerCase();
+  if (ALIASES[processed]) processed = ALIASES[processed];
+
+  // Validate
+  if (!(processed in state.validMap)) {
+    addLog(`❌ "${raw}" is not a valid ${state.category} entry.`, 'bad');
+    shakeInput();
+    // don't restart timer — they still have remaining time
+    return;
+  }
+
+  if (state.usedSet.has(processed)) {
+    addLog(`❌ "${state.validMap[processed]}" was already used!`, 'bad');
+    shakeInput();
+    return;
+  }
+
+  // Valid!
+  clearTimer();
+  state.usedSet.add(processed);
+  state.playerScore++;
+  document.getElementById('p-score').textContent = state.playerScore;
+  document.getElementById('used-count').textContent = `${state.usedSet.size} used`;
+  addLog(`✅ ${state.validMap[processed]}`, 'good');
+
+  disableInput();
+  cpuTurn();
+}
+
+function shakeInput() {
+  const inp = document.getElementById('answer-input');
+  inp.classList.remove('shake');
+  void inp.offsetWidth;
+  inp.classList.add('shake');
+}
+
+// ── CPU TURN ──
+function cpuTurn() {
+  const remaining = Object.entries(state.validMap)
+    .filter(([low]) => !state.usedSet.has(low));
+
+  if (remaining.length === 0) {
+    addLog('🏆 No more entries left!', 'info');
+    endGame('empty');
+    return;
+  }
+
+  document.getElementById('thinking-indicator').classList.add('visible');
+
+  setTimeout(() => {
+    if (state.gameOver) return;
+    document.getElementById('thinking-indicator').classList.remove('visible');
+
+    const [chosenLow, chosenDisplay] = remaining[Math.floor(Math.random() * remaining.length)];
+    state.usedSet.add(chosenLow);
+    state.cpuScore++;
+    document.getElementById('c-score').textContent = state.cpuScore;
+    document.getElementById('used-count').textContent = `${state.usedSet.size} used`;
+    addLog(`🤖 CPU: ${chosenDisplay}`, 'info');
+
+    // Player's turn again
+    enableInput();
+    startTimer();
+  }, CPU_DELAY);
+}
+
+// ── LOG ──
+function addLog(msg, type = 'system') {
+  const log = document.getElementById('game-log');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.textContent = msg;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+
+  // Keep last 30 entries
+  while (log.children.length > 30) {
+    log.removeChild(log.firstChild);
+  }
+}
+
+// ── END GAME ──
+function endGame(reason) {
+  state.gameOver = true;
+  clearTimer();
+  disableInput();
+  document.getElementById('thinking-indicator').classList.remove('visible');
+
+  const p = state.playerScore;
+  const c = state.cpuScore;
+
+  document.getElementById('final-p').textContent = p;
+  document.getElementById('final-c').textContent = c;
+  document.getElementById('play-again-btn').onclick = playAgain;
+
+  const resultTitle = document.getElementById('result-title');
+  const resultLabel = document.getElementById('result-label');
+  const resultReason = document.getElementById('result-reason');
+
+  if (reason === 'timeout') {
+    resultLabel.textContent = 'Time ran out';
+    resultTitle.textContent = p > c ? 'YOU WIN' : p < c ? 'CPU WINS' : 'DRAW';
+    resultTitle.className = 'result-title ' + (p > c ? 'win' : p < c ? 'lose' : 'tie');
+    resultReason.textContent = `You ran out of time. Final: ${p} vs ${c}.`;
+  } else if (reason === 'empty') {
+    resultLabel.textContent = 'Category exhausted';
+    resultTitle.textContent = p > c ? 'YOU WIN' : p < c ? 'CPU WINS' : 'DRAW';
+    resultTitle.className = 'result-title ' + (p > c ? 'win' : p < c ? 'lose' : 'tie');
+    resultReason.textContent = `All ${state.usedSet.size} entries were named! Final: ${p} vs ${c}.`;
+  }
+
+  setTimeout(() => showScreen('gameover-screen'), 400);
+}
+
+function playAgain() {
+  startGame(state.category);
+}
+</script>
 </body>
 </html>
-
-
-
-
